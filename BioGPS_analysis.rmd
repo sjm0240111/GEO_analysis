@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## load the packages
-```{r}
+```{r loading, message=FALSE}
 if (!require(Biobase)) {
     source("http://bioconductor.org/biocLite.R")
     biocLite("Biobase")
@@ -25,6 +25,10 @@ if (!require(ggplot2)) {
     install.packages("ggplot2")
     library(ggplot2)
 }
+if (!require(tidyr)) {
+    install.packages("tidyr")
+    library(tidyr)
+}
 setwd("E:\\Biological_DATA\\BioGPS")
 ```
 ## read the data and choose genes needed.
@@ -32,7 +36,7 @@ Here the geo acession number and the platform is required. We used the Mouse MOE
 We get the expression data and the experiment design `description`, and we get 
 the plantform information in `platf_table`.
 
-```{r cars}
+```{r}
 if (file.exists("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")){
     load("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
 } else {
@@ -47,7 +51,7 @@ if (file.exists("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")){
     # descriptions,here it is different types of cells
     platf <-getGEO(annotation(gset), AnnotGPL=TRUE,destdir="E:\\Biological_DATA\\BioGPS")
     platf_table <-data.frame(attr(dataTable(platf), "table"))
-    save(ex,gset,descriptions, platf, file = "E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
+    save(ex,gset,descriptions, platf_table, file = "E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
 }
 ```
 
@@ -66,24 +70,48 @@ for (gene in genes) {
     }
     print(cor(t(ex[ids,])))
 }
+cells <- data.frame(descriptions, colId=1:length(descriptions))
 ```
 ## Choose probes and cells to plot the final data
 In many cases, the first probe is the best one with high expression and high correlation
-with other probes.
-The cells we are choosing is 
+with other probes. So our probes are Foxo1: 1416981_at, Foxo3: 1434831_a_at,
+Nfe2l2: 1416543_at
+
+The cells we are choosing is:
+1. T-cells
+2. B-cells
+3. macrophages
+4. dendritic cells
+5. Thymocyte
 ```{r}
-cells <- data.frame(descriptions, colId=1:length(descriptions))
-ncols <- length(descriptions)
-plotex <- function(gene) {
-    
-    if (length(ids)>=1) {
-        par(mfrow=c(length(ids),1))
-        for (id in ids) {
-            plot(c(1:100))
-            #qplot(1:ncols,ex[id,],geom = "point")
-        }
-    } else {
-        print("no record!")
-    }
-}
+cellselect <- cells[grep("T-cells|B-cells|macrophage|dendritic|thymocyte",cells$descriptions),]
+exselect <- t(ex[match(c("1416981_at","1434831_a_at","1416543_at"),rownames(ex)),
+               cellselect[,2]])
+plotData <- data.frame(exselect, as.character(cellselect$descriptions))
+names(plotData) <- c("Foxo1","Foxo3","Nfe2l2","celltype")
+plotData <- gather(plotData,gene,exp,-celltype)
+# get the mean and the sd
+myData <- aggregate(plotData$exp,
+    by = list(plotData$celltype, plotData$gene),
+    FUN = function(x) c(mean = mean(x), sd = sd(x),
+                        n = length(x)))
+myData <- do.call(data.frame, myData)
+names(myData) <- c("celltype", "gene", "mean", "sd", "n")
 ```
+## Final plot procedure.
+```{r}
+#pdf(file = "Expression of Foxo1, Foxo3 and Nfe2l2 in different immune cells.pdf",
+#    width=12,height = 7)
+limits <- aes(ymax = myData$mean + myData$sd,
+              ymin = myData$mean - myData$sd)
+p <- ggplot(data = myData, aes(x = celltype, y = mean,
+               fill = gene))
+p + geom_bar(stat = "identity",position = position_dodge(0.9))+
+  geom_errorbar(limits, position = position_dodge(0.9), width = 0.25) +
+  labs(x = "cell types", y = "relative expression") +
+  ggtitle("Expression of Foxo1, Foxo3 and Nfe2l2 in different immune cells") +
+  scale_fill_discrete(name = "genes") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#dev.off()
+```
+Finally the plot need to be saved, you can also plot it.
