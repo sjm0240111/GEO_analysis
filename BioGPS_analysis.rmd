@@ -1,0 +1,89 @@
+---
+title: "BioGPS expression analysis"
+author: "John Lee"
+date: "2017年8月14日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## load the packages
+```{r}
+if (!require(Biobase)) {
+    source("http://bioconductor.org/biocLite.R")
+    biocLite("Biobase")
+    library(Biobase)
+}
+if (!require(GEOquery)) {
+    source("http://bioconductor.org/biocLite.R")
+    biocLite("GEOquery")
+    library(GEOquery)
+}
+if (!require(ggplot2)) {
+    install.packages("ggplot2")
+    library(ggplot2)
+}
+setwd("E:\\Biological_DATA\\BioGPS")
+```
+## read the data and choose genes needed.
+Here the geo acession number and the platform is required. We used the Mouse MOE430 Gene Atlas as an example of how to analyze the expression of a specific gene in different types of cells.
+We get the expression data and the experiment design `description`, and we get 
+the plantform information in `platf_table`.
+
+```{r cars}
+if (file.exists("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")){
+    load("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
+} else {
+    gset <- getGEO("GSE10246", GSEMatrix =TRUE, getGPL=FALSE)
+    # This returns a list of gsets, usually the length of the gset is 1
+    if (length(gset) > 1) idx <- grep("GPL1261", attr(gset, "names")) else idx <- 1
+    gset <- gset[[idx]]
+    # get the first gset
+    ex <- exprs(gset)
+    # expression data
+    descriptions <- gset@phenoData@data$description
+    # descriptions,here it is different types of cells
+    platf <-getGEO(annotation(gset), AnnotGPL=TRUE,destdir="E:\\Biological_DATA\\BioGPS")
+    platf_table <-data.frame(attr(dataTable(platf), "table"))
+    save(ex,gset,descriptions, platf, file = "E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
+}
+```
+
+## Getting the desired gene expression data.
+The major problem here is that one gene may contain several probes. In bioGPS
+website they only used the most active probe. We can also do the same trick, but
+checking the consistency is always prefered.
+```{r}
+genes <- c("Foxo1","Foxo3","Nfe2l2")
+for (gene in genes) {
+    print(gene)
+    ids <- which(platf_table$Gene.symbol==gene)
+    for (id in ids) {
+        print(rownames(ex)[id])
+        print(summary(ex[id,]))
+    }
+    print(cor(t(ex[ids,])))
+}
+```
+## Choose probes and cells to plot the final data
+In many cases, the first probe is the best one with high expression and high correlation
+with other probes.
+The cells we are choosing is 
+```{r}
+cells <- data.frame(descriptions, colId=1:length(descriptions))
+ncols <- length(descriptions)
+plotex <- function(gene) {
+    
+    if (length(ids)>=1) {
+        par(mfrow=c(length(ids),1))
+        for (id in ids) {
+            plot(c(1:100))
+            #qplot(1:ncols,ex[id,],geom = "point")
+        }
+    } else {
+        print("no record!")
+    }
+}
+```
