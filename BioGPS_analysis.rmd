@@ -1,7 +1,7 @@
 ---
 title: "BioGPS expression analysis"
 author: "John Lee"
-date: "2017å¹´8æœˆ14æ—¥"
+date: "2017å¹?8æœ?14æ—?"
 output: html_document
 ---
 
@@ -51,7 +51,8 @@ if (file.exists("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")){
     # descriptions,here it is different types of cells
     platf <-getGEO(annotation(gset), AnnotGPL=TRUE,destdir="E:\\Biological_DATA\\BioGPS")
     platf_table <-data.frame(attr(dataTable(platf), "table"))
-    save(ex,gset,descriptions, platf_table, file = "E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
+    save(ex,gset,descriptions, platf_table, file =
+             "E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
 }
 ```
 
@@ -84,12 +85,18 @@ The cells we are choosing is:
 4. dendritic cells
 5. Thymocyte
 ```{r}
-cellselect <- cells[grep("T-cells|B-cells|macrophage|dendritic|thymocyte",cells$descriptions),]
+cellselect <- cells[grep("B-cells",cells$descriptions),]
+cellselect <- rbind(cellselect,
+              cells[grep("T-cells|macrophage|dendritic|thymocyte",cells$descriptions),])
+cellselect$descriptions <- as.character(cellselect$descriptions)
+cellselect[3:4,1] <-"B-cells_follicular"
+
 exselect <- t(ex[match(c("1416981_at","1434831_a_at","1416543_at"),rownames(ex)),
                cellselect[,2]])
 plotData <- data.frame(exselect, as.character(cellselect$descriptions))
 names(plotData) <- c("Foxo1","Foxo3","Nfe2l2","celltype")
 plotData <- gather(plotData,gene,exp,-celltype)
+plotData[73:108,3] <- plotData[73:108,3]/4
 # get the mean and the sd
 myData <- aggregate(plotData$exp,
     by = list(plotData$celltype, plotData$gene),
@@ -100,18 +107,18 @@ names(myData) <- c("celltype", "gene", "mean", "sd", "n")
 ```
 ## Final plot procedure.
 ```{r}
-#pdf(file = "Expression of Foxo1, Foxo3 and Nfe2l2 in different immune cells.pdf",
-#    width=12,height = 7)
+pdf(file = "Expression of Foxo1, Foxo3 and Nfe2l2 in different immune cells.pdf",
+    width=12,height = 7)
 limits <- aes(ymax = myData$mean + myData$sd,
               ymin = myData$mean - myData$sd)
-p <- ggplot(data = myData, aes(x = celltype, y = mean,
-               fill = gene))
+p <- ggplot(data = myData, aes(x = gene, y = mean,
+               fill = celltype))
 p + geom_bar(stat = "identity",position = position_dodge(0.9))+
   geom_errorbar(limits, position = position_dodge(0.9), width = 0.25) +
   labs(x = "cell types", y = "relative expression") +
   ggtitle("Expression of Foxo1, Foxo3 and Nfe2l2 in different immune cells") +
   scale_fill_discrete(name = "genes") + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-#dev.off()
+dev.off()
 ```
 Finally the plot need to be saved, you can also plot it.
