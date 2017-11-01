@@ -1,0 +1,76 @@
+---
+title: "TCGA_analysis"
+author: "John Lee"
+date: "Oct 9, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Packages
+
+
+```{r load,message=FALSE}
+library(TCGAbiolinks)
+library(dplyr)
+library(DT)
+library(SummarizedExperiment)
+library(DESeq2)
+```
+```{r}
+setwd("D:/LJH/reproducible_research/TCGA")
+```
+## Query
+
+```{r pressure}
+query <- GDCquery(project = "TCGA-LIHC",
+                  data.category = "Gene expression",
+                  data.type = "Gene expression quantification",
+                  platform = "Illumina HiSeq", 
+                  file.type  = "normalized_results",
+                  experimental.strategy = "RNA-Seq",
+                  legacy = TRUE)
+```
+
+### Show HTML grid
+```{r}
+datatable(getResults(query), 
+              filter = 'top',
+              options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+              rownames = FALSE)
+```  
+
+## Download Data
+```{r}
+GDCdownload(query, method = "api")
+```  
+### get the matrix
+```{r}
+data <- GDCprepare(query)
+datatable(as.data.frame(colData(data)), 
+              options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+              rownames = FALSE)
+datamatrix <- assay(data)
+genenames <- rownames(datamatrix)
+save(data,query,file = "D:/LJH/reproducible_research/TCGA/lihc.Rdata")
+```
+
+## De_seq
+```{r}
+#load("D:/LJH/reproducible_research/TCGA/lihc.Rdata")
+definition <- data@colData@listData$definition
+designNc <- ifelse(definition=="Solid Tissue Normal","normal","tumor")
+colDataNc <- data.frame(row.names=colnames(datamatrix),condition=designNc)
+datamatrix <- apply(datamatrix,2,as.integer)
+DESeq_Data<- DESeqDataSetFromMatrix(countData = datamatrix,colData= colDataNc,design = ~ condition)
+DESeq_Data <- DESeq(DESeq_Data,parallel = TRUE)
+Res <- results(DESeq_Data)
+```
+## Final result
+```{r}
+result <- as.data.frame(Res@listData)
+result <- cbind(result,gene=genenames)
+
+```

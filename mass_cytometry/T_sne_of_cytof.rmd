@@ -1,0 +1,48 @@
+---
+title: "T-sne Analysis of Mass Cytometry Data"
+author: "John Li"
+date: "2017å¹?9æœ?11æ—?"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load Packages and data
+
+```{r cars}
+library(Rtsne)
+library(flowCore)
+library(ggplot2)
+wt <- read.FCS("E:/biological_DATA/mass_cytometry/170817/M0 MAC38.fcs")
+em <- read.FCS("E:/biological_DATA/mass_cytometry/170817/M1 MAC38 LATS.fcs")
+```
+
+## Running Rtsne
+here perplexity is the neighbors of a point used to calculate sigma.
+We have to build a tree to aggregate the near points which can be used to calculate the distance for far-away points. This makes the learning much faster.
+```{r}
+wtmat <- log(unique(wt@exprs[,5:33])+0.1)
+emmat <- log(unique(em@exprs[,5:33])+0.1)
+exeTimeTsne<- system.time(wttsne <- Rtsne(wtmat, dims = 2, perplexity=30, verbose=TRUE, max_iter = 1000))
+exeTimeTsne<- system.time(emtsne <- Rtsne(emmat, dims = 2, perplexity=30, verbose=TRUE, max_iter = 1000))
+```
+test
+```{r}
+exeTimeTsne<- system.time(wttest <- Rtsne(wtmat[,c(1,2,5:8,16,18,19,21,28,29)], check_duplicates = FALSE,dims = 2, perplexity=30, verbose=TRUE, max_iter = 1000))
+```
+
+## Plot the Result
+get the marker
+```{r}
+markers <- c("time","Event_length")
+markers <- c(markers,unlist(em@description)[grepl("^\\$P[0-9]+S",names(em@description))])
+markertable <- cbind(marker = markers[5:33],metal = colnames(emmat))
+```
+
+plotting
+```{r}
+marked <- data.frame(wtmat,wttest$Y)
+ggplot(marked,aes(x=X1,y=X2,color=Ho165Di))+geom_point()
+```
