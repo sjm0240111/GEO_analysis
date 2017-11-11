@@ -20,12 +20,12 @@ library(SummarizedExperiment)
 library(DESeq2)
 ```
 ```{r}
-setwd("E:/biological_DATA/TCGA")
+setwd("E:/biological_DATA/TCGA/CHOL/")
 ```
 ## Query
 
 ```{r pressure}
-query <- GDCquery(project = "TCGA-LIHC",
+query <- GDCquery(project = "TCGA-CHOL",
                   data.category = "Gene expression",
                   data.type = "Gene expression quantification",
                   platform = "Illumina HiSeq", 
@@ -48,11 +48,11 @@ GDCdownload(query, method = "api")
 ```  
 ### get the matrix
 ```{r}
-data <- GDCprepare(query)
-datatable(as.data.frame(colData(data)), 
+data.chol <- GDCprepare(query)
+datatable(as.data.frame(colData(data.chol)), 
               options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
               rownames = FALSE)
-datamatrix <- assay(data)
+matrix.chol <- assay(data.chol)
 #genenames <- rownames(datamatrix)
 #save(data,query,file = "D:/LJH/reproducible_research/TCGA/lihc.Rdata")
 ```
@@ -60,23 +60,21 @@ datamatrix <- assay(data)
 ## De_seq
 ```{r}
 #load("D:/LJH/reproducible_research/TCGA/lihc.Rdata")
-definition <- data@colData@listData$definition
-designNc <- ifelse(definition=="Solid Tissue Normal","normal","tumor")
-colDataNc <- data.frame(row.names=colnames(datamatrix),condition=designNc)
-datamatrix <- round(datamatrix)
-DESeq_Data<- DESeqDataSetFromMatrix(countData = datamatrix,colData= colDataNc,design = ~ condition)
+definition <- data.chol@colData@listData$definition
+if (length(unique(definition))==2) {
+  designNc <-definition
+} else {
+  designNc <- ifelse(definition=="Solid Tissue Normal","normal","tumor")
+}
+colDataNc <- data.frame(row.names=colnames(matrix.chol),condition=designNc)
+matrix.chol <- round(matrix.chol)  # as.integet will do floor computation
+DESeq_Data<- DESeqDataSetFromMatrix(countData = matrix.chol,colData= colDataNc,design = ~ condition)
 DESeq_Data <- DESeq(DESeq_Data,parallel = TRUE)
 Res <- results(DESeq_Data)
 ```
 ## Final result
 ```{r}
-result <- as.data.frame(Res@listData)
-result <- cbind(result,gene=rownames(datamatrix))
-```
-save the final results
-```{r}
-matrix.lihc.rsem <- datamatrix
-data.lihc.rsem <- data
-result.lihc.rsem <- result
-save(matrix.lihc.rsem,data.lihc.rsem,result.lihc.rsem, file = "E:/biological_DATA/TCGA/lihc_rsem.RData")
+result.chol <- as.data.frame(Res@listData)
+result.chol <- cbind(result.chol,gene=rownames(matrix.chol))
+save(data.chol,matrix.chol,result.chol,file = "E:/biological_DATA/TCGA/CHOL/chol.RData")
 ```

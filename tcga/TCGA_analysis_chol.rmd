@@ -1,0 +1,80 @@
+---
+title: "TCGA_analysis"
+author: "John Lee"
+date: "Oct 9, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Packages
+
+
+```{r load,message=FALSE}
+library(TCGAbiolinks)
+library(dplyr)
+library(DT)
+library(SummarizedExperiment)
+library(DESeq2)
+```
+```{r}
+setwd("E:\\biological_DATA\\TCGA\\CHOL\\")
+```
+## Query
+
+```{r pressure}
+query <- GDCquery(project = "TCGA-CHOL",
+                  data.category = "Transcriptome Profiling",
+                  data.type = "Gene Expression Quantification",
+                  workflow.type = "HTSeq - Counts",
+                  experimental.strategy = "RNA-Seq")
+```
+
+### Show HTML grid
+```{r}
+datatable(getResults(query), 
+              filter = 'top',
+              options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+              rownames = FALSE)
+```  
+
+## Download Data
+```{r}
+GDCdownload(query, method = "api")
+```  
+### get the matrix
+```{r}
+data.chol <- GDCprepare(query)
+datatable(as.data.frame(colData(data.chol)), 
+              options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+              rownames = FALSE)
+matrix.chol <- assay(data.chol)
+#genenames <- rownames(datamatrix)
+#save(data,query,file = "D:/LJH/reproducible_research/TCGA/lihc.Rdata")
+```
+
+## De_seq
+```{r}
+#load("D:/LJH/reproducible_research/TCGA/lihc.Rdata")
+definition <- data.chol@colData@listData$definition
+if (length(unique(definition))==2) {
+  designNc <-definition
+} else {
+  designNc <- ifelse(definition=="Solid Tissue Normal","normal","tumor")
+}
+colDataNc <- data.frame(row.names=colnames(matrix.chol),condition=designNc)
+matrix.chol <- round(matrix.chol)  # as.integet will do floor computation
+DESeq_Data<- DESeqDataSetFromMatrix(countData = matrix.chol,colData= colDataNc,design = ~ condition)
+DESeq_Data <- DESeq(DESeq_Data,parallel = TRUE)
+Res <- results(DESeq_Data)
+```
+## Final result
+```{r}
+result.chol <- as.data.frame(Res@listData)
+if (mean(data.chol@rowRanges@elementMetadata@listData$ensembl_gene_id==Res@rownames)==1){
+  result.chol$gene <- data.chol@rowRanges@elementMetadata@listData$external_gene_name
+}
+save(data.chol,matrix.chol,result.chol,file = "E:/biological_DATA/TCGA/CHOL/chol_count.RData")
+```
