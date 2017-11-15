@@ -1,0 +1,114 @@
+---
+title: "BA clustering"
+author: "John Lee"
+date: "Nov 14, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(RColorBrewer)
+library(dplyr)
+library(corrplot)
+library(affycoretools)
+setwd("E:/biological_DATA/BA")
+```
+
+## Read Data
+
+```{r}
+ba_gene <- read.csv("ba_gene.csv",header = TRUE)
+bam_gene <- as.matrix(ba_gene[,2:18])
+rownames(bam_gene) <-paste0(ba_gene$names,ba_gene$type)
+```
+
+## Analyze difference
+```{r}
+bam_gene <- bam_gene[order(ba_gene$names),]
+idx <- seq(2,24,2)
+diff <- bam_gene[idx,]/bam_gene[idx+1,]
+diff["4657s.dwt_7w",]
+```
+
+Average data among two tests.
+```{r}
+bam_gene_mean <- bam_gene[c(1,idx+1),]
+bam_gene_mean[2:13,] <- (bam_gene[idx,]+bam_gene[idx+1,])/2
+bam_gene_mean["4657S.ddko_7w",] <- bam_gene["4657S.ddko_7w",]
+rownames(bam_gene_mean) <- sub("S.d",".",rownames(bam_gene_mean))
+```
+
+## Including Plots
+
+```{r}
+heatmap(log(bam_gene_mean+1),scale = "column",col =  topo.colors(16))
+```
+
+## BA level among age
+```{r}
+ba_age <- read.csv(file = "ba_age.csv",header = TRUE,stringsAsFactors = FALSE)
+# ba_age_1019 <- ba_age %>% filter(date == 20171019)
+# ba_age_1105 <- ba_age %>% filter(date == 20171105)
+# ba_age_1019$name <- paste0(sub(".*([A-Z][0-9]+).*","\\1",ba_age_1019$name),".",
+#                           sub("(^[0-9]+).*","\\1",ba_age_1019$name),"w")
+# ba_age_1105$name <- paste0(sub("([A-Z][0-9]+).*","\\1",ba_age_1105$name),".",
+#                           sub(".*-([0-9]+).*","\\1",ba_age_1105$name),"w")
+# ba_age <- rbind(ba_age_1019,ba_age_1105)
+# write.csv(ba_age,file = "ba_age.csv")
+ba_age <- ba_age[order(ba_age$name),]
+bam_age <- as.matrix(ba_age[,3:19])
+```
+## Analyze difference
+```{r}
+idx2 <- seq(1,35,2)[-10]
+diff2 <- ba_age[idx2,3:19] / ba_age[idx2+1,3:19]
+```
+## Average over two tests
+```{r}
+bam_age_mean <- bam_age[c(idx2,19,20),]
+rownames(bam_age_mean) <- ba_age$name[c(idx2,19,20)]
+bam_age_mean[1:17,] <- (bam_age[idx2,] +bam_age[idx2+1,])/2
+```
+## Including Plots
+
+```{r}
+heatmap(log(bam_age_mean+1),scale = "column",col =  topo.colors(16))
+```
+## Merge
+```{r}
+# bam_mean <- rbind(bam_age_mean,bam_gene_mean)
+ba_mean <- read.csv("bile_acid_all.csv",stringsAsFactors = FALSE)
+bam_mean <- as.matrix(ba_mean[,2:18])
+rownames(bam_mean) <- ba_mean$X
+fs <- as.factor(sub(".*\\.(.*)","\\1",ba_mean$X))
+  
+```
+  
+```{r}
+hc.cols <- hclust(dist(bam_mean))
+pdf(file = "ba_clustering.pdf",width = 9,height = 9)
+heatmap(log(bam_mean+1),Rowv=as.dendrogram(hc.cols),scale="column",col =  topo.colors(16),
+        main = "Bile Acid quantification among mouse of different genotype and age",
+        xlab = "BA type")
+dev.off()
+```
+
+PCA
+```{r}
+# comp <- prcomp(log(bam_mean+1))$x
+# plot(comp[,1:2])
+# text(comp[,1:2],labels = rownames(comp))
+pdf(file = "ba_pca.pdf")
+plotPCA(t(log(bam_mean+1)),groups=fs,groupnames=levels(fs),outside=TRUE)
+dev.off()
+```
+AOE
+```{r}
+cor_all <- cor(t(bam_mean))
+pdf(file = "ba_correlation_aoe.pdf",height = 9,width = 9)
+corrplot(cor_all,method = "color",order = "AOE",mar = c(1,1,2,1),
+         title = "correlation of bile acid expression among samples")
+dev.off()
+```
