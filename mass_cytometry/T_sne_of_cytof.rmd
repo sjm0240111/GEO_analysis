@@ -36,9 +36,7 @@ exeTimeTsne<- system.time(wttest <- Rtsne(wtmat[,c(1,2,5:8,16,18,19,21,28,29)], 
 ## Plot the Result
 get the marker
 ```{r}
-markers <- c("time","Event_length")
-markers <- c(markers,unlist(em@description)[grepl("^\\$P[0-9]+S",names(em@description))])
-markertable <- cbind(marker = markers[5:33],metal = colnames(emmat))
+markertable <- wt@parameters@data
 ```
 
 plotting

@@ -1,0 +1,47 @@
+---
+title: "one_SENSE"
+author: "John Lee"
+date: "Nov 17, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(Rtsne)
+library(flowCore)
+library(cytofkit)
+wd <- "E:\\Biological_DATA\\mass cytometry\\lats_tumor\\170922\\cytobank_170922_tumor"
+setwd(wd)
+```
+
+## Read Data
+```{r}
+files <- paste0(wd,"\\",dir(wd,pattern = "fcs"))
+merged <- cytof_exprsMerge(files, transformMethod = "cytofAsinh",
+                 mergeMethod = "ceil", fixedNum = 20000)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+# fcs <- read.FCS(files[1])
+# pd <- fcs@parameters@data
+# markers <- paste(pd$name, "<", pd$desc, ">", sep = "")
+markers <- colnames(merged)
+dif_sel <- c(5,6,8,9,10,11,14,20,23,28,30)
+```
+
+## Run tSNE 
+```{r}
+set.seed(42)
+marker_filtered_data <- merged[, dif_sel]
+tsne_out <- Rtsne(marker_filtered_data, initial_dims = ncol(marker_filtered_data), 
+                                 dims = 1, 
+                                 check_duplicates = FALSE, 
+                                 pca = TRUE)
+mapped <- tsne_out$Y
+```
