@@ -13,10 +13,11 @@ library(RColorBrewer)
 library(dplyr)
 library(corrplot)
 library(affycoretools)
+library(ggplot2)
 setwd("E:/biological_DATA/BA")
 ```
 
-## Read Data
+## Read Data of Bile Acid of different genotypes
 
 ```{r}
 ba_gene <- read.csv("ba_gene.csv",header = TRUE)
@@ -110,5 +111,73 @@ cor_all <- cor(t(bam_mean))
 pdf(file = "ba_correlation_aoe.pdf",height = 9,width = 9)
 corrplot(cor_all,method = "color",order = "AOE",mar = c(1,1,2,1),
          title = "correlation of bile acid expression among samples")
+dev.off()
+```
+
+## Bile Acid level of Partial Hepatectomy
+```{r}
+ba_phx <- read.csv("ba_phx.csv",header = T,stringsAsFactors = F)
+
+# bam_phx <- ba_phx[,2:23]
+rownames(bam_phx) <- ba_phx[,1]
+bam_phx <- as.matrix(bam_phx)
+# write.csv(bam_phx,file = "ba_phx.csv")
+idx3 <- seq(1,21,2)
+bam_phx_mean <- (bam_phx[idx3,]+bam_phx[idx3+1,])/2
+rownames(bam_phx_mean) <- sub("X([0-9]+[hd]).*","\\1",rownames(bam_phx)[idx3])
+```
+
+## Merge
+```{r}
+dfphx <- as.data.frame(bam_phx_mean)
+bam_phx_mean <- bam_phx_mean[,match(colnames(bam_mean),colnames(bam_phx_mean))]
+bam_mean2 <- rbind(bam_mean,bam_phx_mean)
+save(bam_mean2,file = "bam_mean2.RData")
+write.csv(bam_mean2,file = "bile_acid_all2.csv")
+```  
+## Final all data
+```{r}
+load("means.RData")
+rownames(bam_phx) <- paste0("phx.",rownames(bam_phx))
+bam_mean_all <- rbind(bam_genoage,bam_phx)
+```
+plots
+```{r}
+bam_mean_all2 <- bam_mean_all[c(9,8,10:20),]
+hc.cols2 <- hclust(dist(bam_mean_all2))
+pdf(file = "ba_clustering_all3.pdf",width = 9,height = 9)
+heatmap(log(bam_mean_all2+1),Rowv=as.dendrogram(hc.cols2),scale="column",col =  topo.colors(16),
+        main = "Bile Acid quantification among mouse of different conditions",
+        xlab = "BA type")
+dev.off()
+# hc.cols3 <- hclust(dist(bam_genoage))
+# pdf(file = "ba_clustering_mean.pdf",width = 9,height = 9)
+# heatmap(log(bam_genoage+1),Rowv=as.dendrogram(hc.cols3),scale="none",col =  topo.colors(16),
+#         main = "Bile Acid quantification among mouse of different conditions",
+#         xlab = "BA type")
+# dev.off()
+```
+PCA plots
+```{r}
+rownames(bam_mean) <- sub(".*\\.(.*)","\\1",rownames(bam_mean))
+bam_all <- rbind(bam_mean,bam_phx)
+fs2 <- as.factor(rownames(bam_all))
+pdf(file = "ba_pca.pdf")
+plotPCA(t(log(bam_all+1)),groups=fs2,groupnames=levels(fs2),outside=TRUE)
+dev.off()
+```
+partial hepatectomy
+```{r}
+bam_phx2 <- rbind(bam_genoage[9,],bam_phx)
+rownames(bam_phx2)[1] <- "0h"
+bam_phx2 <- t(t(bam_phx2)/colMeans(bam_phx2))
+bam_phx2 <- cbind(time= c(0,6,12,18,24,36,48,72,96,120,144,168),bam_phx2)
+bam_phx3 <- gather(as.data.frame(bam_phx2),key = "type",value = "expression",-time)
+# cols <- brewer.pal(9,"Set1")
+# pal <- colorRampPalette(cols)
+pdf(file = "bile acid level change during liver regeneration.pdf",width = 9)
+ggplot(bam_phx3,aes(x=time,y=expression,col=type)) + geom_line()+
+    labs(title="bile acid level change during liver regeneration")
+    # scale_color_manual(values = pal(17))
 dev.off()
 ```
