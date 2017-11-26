@@ -1,7 +1,7 @@
 ---
 title: "BioGPS expression analysis"
 author: "John Lee"
-date: "2017å¹?8æœ?14æ—?"
+date: "Aug 14, 2017"
 output: html_document
 ---
 
@@ -29,7 +29,7 @@ if (!require(tidyr)) {
     install.packages("tidyr")
     library(tidyr)
 }
-setwd("E:\\Biological_DATA\\BioGPS")
+setwd("E:\\Biological_DATA\\GEO_data\\BioGPS")
 ```
 ## read the data and choose genes needed.
 Here the geo acession number and the platform is required. We used the Mouse MOE430 Gene Atlas as an example of how to analyze the expression of a specific gene in different types of cells.
@@ -37,8 +37,8 @@ We get the expression data and the experiment design `description`, and we get
 the plantform information in `platf_table`.
 
 ```{r}
-if (file.exists("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")){
-    load("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
+if (file.exists("E:\\Biological_DATA\\GEO_data\\BioGPS\\GSE10246.RData")){
+    load("E:\\Biological_DATA\\GEO_data\\BioGPS\\GSE10246.RData")
 } else {
     gset <- getGEO("GSE10246", GSEMatrix =TRUE, getGPL=FALSE)
     # This returns a list of gsets, usually the length of the gset is 1
@@ -49,10 +49,10 @@ if (file.exists("E:\\Biological_DATA\\BioGPS\\GSE10246.RData")){
     # expression data
     descriptions <- gset@phenoData@data$description
     # descriptions,here it is different types of cells
-    platf <-getGEO(annotation(gset), AnnotGPL=TRUE,destdir="E:\\Biological_DATA\\BioGPS")
+    platf <-getGEO(annotation(gset), AnnotGPL=TRUE,destdir="E:\\Biological_DATA\\GEO_data\\BioGPS")
     platf_table <-data.frame(attr(dataTable(platf), "table"))
     save(ex,gset,descriptions, platf_table, file =
-             "E:\\Biological_DATA\\BioGPS\\GSE10246.RData")
+             "E:\\Biological_DATA\\GEO_data\\BioGPS\\GSE10246.RData")
 }
 ```
 
